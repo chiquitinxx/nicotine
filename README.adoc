@@ -1,0 +1,50 @@
+= nicotine
+
+Library for basic dependency injection with default interfaces. Create your objects 
+executing functions, use constructor injection in that functions.
+
+Load providers of you objects:
+[source,java]
+----
+import dev.yila.nicotine.ObjectsLoader;
+
+public class MyLoader implements ObjectsLoader {
+    public void load() {
+        loadObject(SomeInterface.class, provider -> new SomeImplementation(provider.getObject(OtherInterface.class)));
+    }
+}
+
+----
+
+And get them using:
+
+[source,java]
+----
+import dev.yila.nicotine.ObjectsProvider;
+
+public class MyLoader implements ObjectsProvider {
+    public void getSomeObjectFromDependencyInjection() {
+        SomeInterface interface = getObject(SomeInterface.class);
+    }
+}
+----
+
+Define singleton objects with:
+
+[source,java]
+----
+import dev.yila.nicotine.Singleton;
+
+@Singleton
+public class SomeImplementation implements SomeInterface {
+}
+----
+
+== Dependencies
+
+Java 8, no more dependencies.
+
+== Run pitest coverage
+
+mvn clean verify org.pitest:pitest-maven:mutationCoverage
+

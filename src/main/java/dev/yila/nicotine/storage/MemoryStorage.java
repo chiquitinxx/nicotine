@@ -3,6 +3,7 @@ package dev.yila.nicotine.storage;
 import dev.yila.nicotine.LoaderProvider;
 import dev.yila.nicotine.ObjectsProvider;
 import dev.yila.nicotine.Singleton;
+import dev.yila.nicotine.exception.ServiceNotFoundException;
 
 import java.util.Map;
 import java.util.Optional;
@@ -31,7 +32,7 @@ public class MemoryStorage {
         return Optional
                 .ofNullable(getCreateServiceFunction(clazz))
                 .map(createServiceFunction -> getSingletonOrCreateService(source, clazz, createServiceFunction))
-                .orElseThrow(() -> new RuntimeException("Not found service defined by class " + clazz.getCanonicalName()));
+                .orElseThrow(() -> new ServiceNotFoundException("Not found service defined by class " + clazz.getCanonicalName()));
     }
 
     public <T> void load(Class<T> clazz, Function<ObjectsProvider, T> createServiceFunction) {
@@ -40,7 +41,7 @@ public class MemoryStorage {
     }
 
     public int size() {
-        return this.mapping.size() + this.singletons.size();
+        return this.mapping.size();
     }
 
     public void clear() {

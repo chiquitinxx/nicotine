@@ -1,6 +1,7 @@
 package dev.yila.nicotine;
 
 import dev.yila.nicotine.exception.CircularDependenciesException;
+import dev.yila.nicotine.exception.ServiceNotFoundException;
 import dev.yila.nicotine.storage.MemoryStorage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -8,6 +9,12 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class DependencyInjectionTest implements ObjectsLoader, ObjectsProvider {
+
+    @Test
+    public void errorIfNotLoaded() {
+        assertEquals(0, MemoryStorage.getInstance().size());
+        assertThrows(ServiceNotFoundException.class, () -> getObject(InitialInterface.class));
+    }
 
     @Test
     public void loadTheImplementationOfAnInterface() {
@@ -24,6 +31,7 @@ public class DependencyInjectionTest implements ObjectsLoader, ObjectsProvider {
         InitialInterface first = getObject(InitialInterface.class);
         InitialInterface second = getObject(InitialInterface.class);
         assertSame(first, second);
+        assertEquals(1, MemoryStorage.getInstance().size());
     }
 
     @Test
