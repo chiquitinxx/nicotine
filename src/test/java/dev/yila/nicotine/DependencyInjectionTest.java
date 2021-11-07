@@ -14,6 +14,16 @@ public class DependencyInjectionTest implements ObjectsLoader, ObjectsProvider {
         loadObject(InitialInterface.class, provider -> new InitialImplementation());
         InitialInterface object = getObject(InitialInterface.class);
         assertTrue(object instanceof InitialImplementation);
+        InitialInterface another = getObject(InitialInterface.class);
+        assertNotSame(object, another);
+    }
+
+    @Test
+    public void singletonImplementation() {
+        loadObject(InitialInterface.class, provider -> new SingletonImplementation());
+        InitialInterface first = getObject(InitialInterface.class);
+        InitialInterface second = getObject(InitialInterface.class);
+        assertSame(first, second);
     }
 
     @Test
