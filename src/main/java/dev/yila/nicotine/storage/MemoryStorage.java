@@ -1,9 +1,9 @@
 package dev.yila.nicotine.storage;
 
-import dev.yila.nicotine.LoaderProvider;
+import dev.yila.functional.Mutation;
+import dev.yila.functional.Result;
 import dev.yila.nicotine.ObjectsProvider;
 import dev.yila.nicotine.Singleton;
-import dev.yila.nicotine.exception.ServiceNotFoundException;
 
 import java.util.Map;
 import java.util.Optional;
@@ -15,8 +15,8 @@ public class MemoryStorage {
     //TODO Thread-safe review
     private static final MemoryStorage INSTANCE = new MemoryStorage();
 
-    private Map<Class<?>, Function<ObjectsProvider, ?>> mapping = new ConcurrentHashMap<>();
     private Map<Class<?>, Object> singletons = new ConcurrentHashMap<>();
+    private Mutation<FunctionStore> functionsStore = Mutation.create(new FunctionStore());
 
     public static MemoryStorage getInstance() {
         return INSTANCE;
@@ -24,54 +24,54 @@ public class MemoryStorage {
 
     private MemoryStorage() {}
 
-    public <T> T getService(ObjectsProvider source, Class<T> clazz) {
+    public <T> Result<T> getService(ObjectsProvider source, Class<T> clazz) {
         return getStoredService(source, clazz);
     }
 
-    private <T> T getStoredService(ObjectsProvider source, Class<T> clazz) {
-        return Optional
-                .ofNullable(getCreateServiceFunction(clazz))
-                .map(createServiceFunction -> getSingletonOrCreateService(source, clazz, createServiceFunction))
-                .orElseThrow(() -> new ServiceNotFoundException("Not found service defined by class " + clazz.getCanonicalName()));
+    private <T> Result<T> getStoredService(ObjectsProvider source, Class<T> clazz) {
+        return getCreateServiceFunction(clazz)
+                .flatMap(createServiceFunction -> getSingletonOrCreateService(source, clazz, createServiceFunction));
     }
 
-    public <T> void load(Class<T> clazz, Function<ObjectsProvider, T> createServiceFunction) {
-        this.mapping.put(clazz, createServiceFunction);
+    public <T> void load(Class<T> clazz, Function<ObjectsProvider, Result<T>> createServiceFunction) {
+        this.functionsStore.mutate(store -> store.put(clazz, createServiceFunction));
         this.singletons.remove(clazz);
     }
 
     public int size() {
-        return this.mapping.size();
+        return this.functionsStore.get().size();
     }
 
     public void clear() {
-        this.mapping.clear();
+        this.functionsStore = Mutation.create(new FunctionStore());
         this.singletons.clear();
     }
 
-    private <T> T getSingletonOrCreateService(ObjectsProvider source, Class<T> clazz, Function<ObjectsProvider, T> createServiceFunction) {
+    private <T> Result<T> getSingletonOrCreateService(ObjectsProvider source, Class<T> clazz, Function<ObjectsProvider, Result<T>> createServiceFunction) {
         Optional<T> singleton = getSingleton(clazz);
-        return singleton.orElseGet(() ->
-                createNewService(source, clazz, createServiceFunction)
+        return singleton
+                .map(Result::ok)
+                .orElseGet(() -> createNewService(source, clazz, createServiceFunction)
         );
     }
 
-    private <T> T createNewService(ObjectsProvider source, Class<T> clazz, Function<ObjectsProvider, T> createServiceFunction) {
-        LoaderProvider loaderProvider;
-        if (source instanceof LoaderProvider) {
-            loaderProvider = (LoaderProvider) source;
+    private <T> Result<T> createNewService(ObjectsProvider source, Class<T> clazz, Function<ObjectsProvider, Result<T>> createServiceFunction) {
+        LoaderResolver loaderResolver;
+        if (source instanceof LoaderResolver) {
+            loaderResolver = (LoaderResolver) source;
         } else {
-            loaderProvider = new LoaderProvider();
+            loaderResolver = new LoaderResolver();
         }
-        T result = createServiceFunction.apply(loaderProvider);
-        if (result.getClass().isAnnotationPresent(Singleton.class)) {
-            putSingleton(clazz, result);
-        }
-        return result;
+        Result<T> result = createServiceFunction.apply(loaderResolver);
+        return result.onSuccess(object -> {
+            if (object.getClass().isAnnotationPresent(Singleton.class)) {
+                putSingleton(clazz, object);
+            }
+        });
     }
 
-    private <T> Function<ObjectsProvider, T> getCreateServiceFunction(Class<T> clazz) {
-        return (Function<ObjectsProvider, T>) mapping.get(clazz);
+    private <T> Result<Function<ObjectsProvider, Result<T>>> getCreateServiceFunction(Class<T> clazz) {
+        return functionsStore.get().getFunction(clazz);
     }
 
     private <T> Optional<T> getSingleton(Class<T> clazz) {

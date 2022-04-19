@@ -57,9 +57,15 @@
     <maven.javadoc.plugin>3.3.1</maven.javadoc.plugin>
     <maven.gpg.plugin>3.0.1</maven.gpg.plugin>
     <maven.release.plugin>2.5.3</maven.release.plugin>
+    <yila.functional>0.8</yila.functional>
   </properties>
 
   <dependencies>
+    <dependency>
+      <groupId>dev.yila</groupId>
+      <artifactId>functional</artifactId>
+      <version>${yila.functional}</version>
+    </dependency>    
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-engine</artifactId>
